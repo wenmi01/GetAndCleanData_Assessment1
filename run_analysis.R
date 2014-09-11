@@ -16,93 +16,81 @@ print(as.character(newdir))
 ## URL Data Source
 url <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
 
-UCI_dir_files <- list.files(newdir)
-UCI_dir_files
 
-## Read Features features.txt
-features <- read.table(paste(newdir, "/", UCI_dir_files[2], sep = ""))
-features <- as.vector(features$V2)
+features     = read.table('./features.txt',header=FALSE); #imports features.txt
+activityType = read.table('./activity_labels.txt',header=FALSE); #imports activity_labels.txt
+subjectTrain = read.table('./train/subject_train.txt',header=FALSE); #imports subject_train.txt
+xTrain       = read.table('./train/x_train.txt',header=FALSE); #imports x_train.txt
+yTrain       = read.table('./train/y_train.txt',header=FALSE); #imports y_train.txt
 
-## Get the Labels activity_labels.txt
-labels <- read.table(paste(newdir, "/", UCI_dir_files[2], sep = ""))
-labels <- as.vector(labels$V2)
 
-## mergedata() function
-mergedata <- function(datafile) {
-  ## Set datafile directory
-  setwd(paste(newdir, "/", datafile, sep = ""))
-  
-  ## List files in Working Directory
-  Datafiles <- list.files(getwd())
-  X <- Datafiles[3]
-  Y <- Datafiles[4]
-  Z <- Datafiles[2]
-  library(plyr)
-  ## Extracting data files and merging data
-  Data <- do.call("cbind", lapply(c(Z, Y, Y, X), function(dn) data.frame(read.table(dn))))
-  Activity <- Data[, 3]
-  ## Linking Activities to Activity_labels
-  for (i in Activity) {
-    Activity[Activity == i] = labels[i]
-  }
-  Data[, 3] <- Activity
-  ## Blocks column to identify subject groupings
-  Blocks <- rep(paste(datafile, "set", sep = ""), nrow(Data))
-  Data <- cbind(data.frame(Blocks), Data)
-  Data
-}
+# Assign column names to the data imported above
+colnames(activityType)  = c('activityId','activityType');
+colnames(subjectTrain)  = "subjectId";
+colnames(xTrain)        = features[,2]; 
+colnames(yTrain)        = "activityId";
 
-##mergeUCIdata
-mergeUCIdata <- function(Data1, Data2) {
-  Data1 <- mergedata(Data1)
-  Data2 <- mergedata(Data2)
-  UCIDATA <- rbind(Data1, Data2)
-  cols <- c("Blocks", "Subject", "Activity_label", "Activity", features)
-  colnames(UCIDATA) <- cols
-  UCIDATA
-}
+# Training data yTrain, subjectTrain, and xTrain
+trainingData = cbind(yTrain,subjectTrain,xTrain);
 
-UCIDATA <- mergeUCIdata("test", "train")
+# Read in the test data
+subjectTest = read.table('./test/subject_test.txt',header=FALSE); #imports subject_test.txt
+xTest       = read.table('./test/x_test.txt',header=FALSE); #imports x_test.txt
+yTest       = read.table('./test/y_test.txt',header=FALSE); #imports y_test.txt
 
-##Dimension of Test Data
-Test_data <- mergedata("test")
-dim(Test_data)
+# Assign column names to test data
+colnames(subjectTest) = "subjectId";
+colnames(xTest)       = features[,2]; 
+colnames(yTest)       = "activityId";
 
-## Dimension of Train Data
-Train_data <- mergedata("train")
-dim(Train_data)
 
-##Merged Dataset Dimension UCI
-dim(UCIDATA)
+#
+testData = cbind(yTest,subjectTest,xTest);
 
-## pattern to match
-pattern <- c("mean", "std")
 
-## match algorithm
-matches <- unique(grep(paste(pattern, collapse = "|"), colnames(UCIDATA), value = TRUE))
-length(matches)
+# Combine training and test data to create final data set
+finalData = rbind(trainingData,testData);
 
-## Get Mean and Standard Deviation
-Mean_Std <- UCIDATA[, matches]
+# Create vector for the column names from the finalData, which will be used
 
-## Dimension of Mean and SD
-dim(Mean_Std)
+colNames  = colnames(finalData); 
 
-## Mean Variables and SD
-names(Mean_Std)
 
-## Split subset by 30 Level Factor List
-G <- split(UCIDATA[, 5:565], list(UCIDATA$Activity, UCIDATA$Subject))
-names(G)
+logicalVector = (grepl("activity..",colNames) | grepl("subject..",colNames) | grepl("-mean..",colNames) & !grepl("-meanFreq..",colNames) & !grepl("mean..-",colNames) | grepl("-std..",colNames) & !grepl("-std()..-",colNames));
 
-## Store Summary
-Summarydata <- sapply(G, colMeans)
+finalData = finalData[logicalVector==TRUE];
 
-## Dimension Summary data
-dim(Summarydata)
+finalData = merge(finalData,activityType,by='activityId',all.x=TRUE);
 
-##Write summary uncomment or execute this to your console
-#write.csv(Summarydata,"Summarydata.csv")
+colNames  = colnames(finalData); 
+
+# Cleaning up variables
+for (i in 1:length(colNames)) 
+{
+  colNames[i] = gsub("\\()","",colNames[i])
+  colNames[i] = gsub("-std$","StdDev",colNames[i])
+  colNames[i] = gsub("-mean","Mean",colNames[i])
+  colNames[i] = gsub("^(t)","time",colNames[i])
+  colNames[i] = gsub("^(f)","freq",colNames[i])
+  colNames[i] = gsub("([Gg]ravity)","Gravity",colNames[i])
+  colNames[i] = gsub("([Bb]ody[Bb]ody|[Bb]ody)","Body",colNames[i])
+  colNames[i] = gsub("[Gg]yro","Gyro",colNames[i])
+  colNames[i] = gsub("AccMag","AccMagnitude",colNames[i])
+  colNames[i] = gsub("([Bb]odyaccjerkmag)","BodyAccJerkMagnitude",colNames[i])
+  colNames[i] = gsub("JerkMag","JerkMagnitude",colNames[i])
+  colNames[i] = gsub("GyroMag","GyroMagnitude",colNames[i])
+};
+
+# new colnames
+colnames(finalData) = colNames;
+
+finalDataNoActivityType  = finalData[,names(finalData) != 'activityType'];
+
+tidyData    = aggregate(finalDataNoActivityType[,names(finalDataNoActivityType) != c('activityId','subjectId')],by=list(activityId=finalDataNoActivityType$activityId,subjectId = finalDataNoActivityType$subjectId),mean);
+
+tidyData    = merge(tidyData,activityType,by='activityId',all.x=TRUE);
+
+write.table(tidyData, './tidy.txt',row.names=TRUE,sep='\t');
 
 ## Restore directory
 setwd(wdir)

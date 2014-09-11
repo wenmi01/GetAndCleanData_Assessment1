@@ -1,6 +1,19 @@
 # Code Book
 
 ##Variables
+   Features are from tAcc-XYZ and tGyro-XYZ
+ 
+   Body and Accelaration Signals
+    -tBodyAcc-XYZ
+    -tGravityAcc-XYZ
+
+  Fast Fourier Transform (FFT) applied to some of these signals producing fBodyAcc-XYZ, fBodyAccJerk-XYZ, fBodyGyro-XYZ, fBodyAccJerkMag, fBodyGyroMag, fBodyGyroJerkMag
+  
+  
+  The -mean and -Dev are added for the data tidy.txt as easy output for average and deviation
+
+
+##Extensive List of Features
 
 ###Features
 tBodyAcc-mean()-X
@@ -1166,6 +1179,8 @@ fBodyBodyGyroJerkMag-std()
 
 
 ###Means
+Computed Means
+
 tBodyAcc-mean()-X
 tBodyAcc-mean()-Y
 tBodyAcc-mean()-Z
